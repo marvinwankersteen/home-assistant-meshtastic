@@ -33,3 +33,16 @@ keep-runtime-typing = true
 
 [lint.mccabe]
 max-complexity = 25
+
+[lint.per-file-ignores]
+"tests/*" = [
+    "ANN001", # Fixture and parametrized argument types are inferred by pytest.
+    "ANN201", # Test and fixture return types are not required.
+    "ANN202", # Nested test callback return types are not required.
+    "ARG001", # Some fixtures are requested for their side effects.
+    "ARG005", # Mock callbacks preserve the signature of the replaced function.
+    "PLR0913", # Test dependencies are passed as fixtures.
+    "PLR2004", # Test expectations include explicit numeric values.
+    "S101", # Assertions are the pytest assertion API.
+    "SLF001", # Regression tests exercise integration helper methods.
+]

@@ -117,10 +117,6 @@ class MeshtasticDeviceTracker(MeshtasticNodeEntity, TrackerEntity):
             for k, v in position.items()
             if k in ["altitude", "groundSpeed", "groundTrack", "locationSource", "satsInView"]
         }
-
-    @property
-    def battery_level(self) -> int | None:
         level = self.coordinator.data[self.node_id].get("deviceMetrics", {}).get("batteryLevel", None)
         if level is not None:
-            return max(0, min(100, level))
-        return level
+            self._attr_extra_state_attributes["battery_level"] = max(0, min(100, level))

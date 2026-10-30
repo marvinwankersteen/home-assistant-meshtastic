@@ -5,11 +5,9 @@
 import asyncio
 import contextlib
 import re
-from asyncio import StreamReader, StreamReaderProtocol, StreamWriter
-from typing import cast
+from asyncio import StreamReader, StreamWriter
 
-import serial
-import serial_asyncio
+import serialx
 
 from custom_components.meshtastic.aiomeshtastic.connection import (
     ClientApiConnectionError,
@@ -36,16 +34,11 @@ class SerialConnection(StreamingClientTransport, asyncio.Protocol):
 
     async def _connect(self) -> None:
         loop = asyncio.get_running_loop()
-        reader = StreamReader(loop=loop)
-        protocol = StreamReaderProtocol(reader, loop=loop)
-        transport, _ = await serial_asyncio.create_serial_connection(
-            loop,
-            lambda: protocol,
-            self._device,
+        reader, writer = await serialx.open_serial_connection(
+            url=self._device,
             baudrate=self._baud_rate,
             exclusive=True,
         )
-        writer = StreamWriter(transport, protocol, reader, loop)
         self._reader = reader
         self._writer = writer
 
@@ -86,12 +79,12 @@ class SerialConnection(StreamingClientTransport, asyncio.Protocol):
     async def _disconnect(self) -> None:
         if self._writer:
             self._writer.close()
-            cast("serial_asyncio.SerialTransport", self._writer.transport).serial.close()
+            await self._writer.wait_closed()
             self._writer = None
             self._reader = None
 
         if self._log_reader:
-            self._log_reader.at_eof()
+            self._log_reader.feed_eof()
             self._log_reader = None
 
         if self._log_reader_task is not None:
@@ -124,7 +117,7 @@ class SerialConnection(StreamingClientTransport, asyncio.Protocol):
             if exactly is not None:
                 return await self._reader.readexactly(exactly)
             return await self._reader.read(n=n)
-        except serial.serialutil.SerialException as e:
+        except (OSError, TimeoutError, serialx.SerialException) as e:
             raise SerialConnectionError from e
 
     async def _write_bytes(self, data: bytes) -> bool:
