@@ -45,15 +45,22 @@ async def setup_platform_entry(
     async_add_entities: AddEntitiesCallback,
     entity_factory: Callable[[typing.Mapping[int, typing.Mapping[str, Any]], MeshtasticData], Iterable[Entity]],
 ) -> None:
-    async_add_entities(entity_factory(get_nodes(entry), entry.runtime_data))
     platform = entity_platform.async_get_current_platform()
+    known_unique_ids: set[str | None] = set()
 
     def on_coordinator_data_update() -> None:
-        entities = entity_factory(get_nodes(entry), entry.runtime_data)
-        new_entities = [s for s in entities if s.entity_id not in platform.entities]
+        new_entities = []
+        for entity in entity_factory(get_nodes(entry), entry.runtime_data):
+            if entity.unique_id in known_unique_ids:
+                continue
+            # Remember pending and disabled entities too. Home Assistant may
+            # assign a different entity_id, or the user may rename it later.
+            known_unique_ids.add(entity.unique_id)
+            new_entities.append(entity)
         if new_entities:
             async_add_entities(new_entities)
 
+    on_coordinator_data_update()
     remove_listener = entry.runtime_data.coordinator.async_add_listener(on_coordinator_data_update)
     _remove_listeners[platform.domain][entry.entry_id].append(remove_listener)
 

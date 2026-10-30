@@ -13,6 +13,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 
 from .const import DOMAIN, STATE_ATTRIBUTE_CHANNEL_INDEX, STATE_ATTRIBUTE_CHANNEL_NODE
 from .coordinator import MeshtasticDataUpdateCoordinator
@@ -254,7 +255,7 @@ class MeshtasticNodeEntity(MeshtasticCoordinatorEntity, ABC):
         gateway_short_name = gateway.get("user", {}).get("shortName", None)
         gateway_prefix = "" if gateway_short_name is None else f"{gateway_short_name.lower()}_"
 
-        self.entity_id = f"{platform}.{DOMAIN}_{gateway_prefix}{self.node_id}_{self.entity_description.key}"
+        self._suggested_object_id = slugify(f"{DOMAIN}_{gateway_prefix}{self.node_id}_{self.entity_description.key}")
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, str(self.node_id))},
@@ -263,6 +264,10 @@ class MeshtasticNodeEntity(MeshtasticCoordinatorEntity, ABC):
             f"{coordinator.config_entry.entry_id}_{platform}_{self.node_id}_{self.entity_description.key}"
         )
         self._attr_has_entity_name = True
+
+    @property
+    def suggested_object_id(self) -> str:
+        return self._suggested_object_id
 
     @property
     def node_id(self) -> int:
