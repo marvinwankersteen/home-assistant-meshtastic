@@ -97,7 +97,9 @@ class MeshtasticSensor(MeshtasticNodeEntity, SensorEntity):
     @callback
     def _async_update_attrs(self) -> None:
         LOGGER.debug("Updating sensor attributes: %s", self)
-        self._attr_native_value = self.entity_description.value_fn(self)
+        self._attr_native_value = (
+            self.entity_description.value_fn(self) if self.node_id in (self.coordinator.data or {}) else None
+        )
         self._attr_available = self._attr_native_value is not None
 
 
@@ -330,7 +332,13 @@ def _build_local_stats_sensors(
 ) -> Iterable[MeshtasticSensor]:
     coordinator = runtime_data.coordinator
     gateway = runtime_data.client.get_own_node()
-    nodes_with_local_stats = {node_id: node_info for node_id, node_info in nodes.items() if "localStats" in node_info}
+    # The gateway reports these metrics after connecting. Register its sensors
+    # immediately so existing entities remain attached while waiting for data.
+    nodes_with_local_stats = {
+        node_id: node_info
+        for node_id, node_info in nodes.items()
+        if node_id == runtime_data.gateway_node["num"] or "localStats" in node_info
+    }
 
     entities = []
     try:

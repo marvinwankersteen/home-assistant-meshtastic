@@ -196,7 +196,13 @@ class MeshInterface:
 
         async def wrapper(node: MeshNode, source: Packet) -> None:
             if as_dict:
-                await callback(node, google.protobuf.json_format.MessageToDict(source.app_payload))
+                await callback(
+                    node,
+                    google.protobuf.json_format.MessageToDict(
+                        source.app_payload,
+                        always_print_fields_with_no_presence=packet_type == portnums_pb2.PortNum.TELEMETRY_APP,
+                    ),
+                )
             elif as_packet:
                 await callback(node, source)
             else:
@@ -636,7 +642,9 @@ class MeshInterface:
 
         if packet.port_num == portnums_pb2.PortNum.TELEMETRY_APP:
             telemetry = packet.app_payload
-            telemetry_info = google.protobuf.json_format.MessageToDict(telemetry)
+            telemetry_info = google.protobuf.json_format.MessageToDict(
+                telemetry, always_print_fields_with_no_presence=True
+            )
             if node_id in self._node_database:
                 await self._node_database_update(node_id, **telemetry_info)
         elif packet.port_num == portnums_pb2.PortNum.POSITION_APP:
