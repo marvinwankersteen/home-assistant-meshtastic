@@ -265,6 +265,8 @@ class MeshtasticNodeEntity(MeshtasticCoordinatorEntity, ABC):
         )
         self._attr_has_entity_name = True
 
+        self._async_update_attrs()
+
     @property
     def suggested_object_id(self) -> str:
         return self._suggested_object_id
@@ -275,4 +277,4 @@ class MeshtasticNodeEntity(MeshtasticCoordinatorEntity, ABC):
 
     @property
     def available(self) -> bool:
-        return super().available and self.node_id in self.coordinator.data
+        return super().available and self._attr_available and self.node_id in (self.coordinator.data or {})

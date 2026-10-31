@@ -11,14 +11,12 @@ https://github.com/meshtastic/home-assistant
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import datetime
 from collections import defaultdict
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import (
     CONF_HOST,
@@ -123,6 +121,7 @@ async def async_setup_entry(
     coordinator = MeshtasticDataUpdateCoordinator(hass=hass)
     if coordinator.config_entry is None:
         coordinator.config_entry = entry
+        entry.async_on_unload(coordinator.async_shutdown)
 
     client = MeshtasticApiClient(entry.data, hass=hass, config_entry_id=entry.entry_id)
 
@@ -298,23 +297,11 @@ async def async_unload_entry(
     return unload_ok
 
 
-_reload_lock = asyncio.Lock()
-
-
 async def async_reload_entry(
     hass: HomeAssistant,
     entry: MeshtasticConfigEntry,
 ) -> None:
-    async with _reload_lock:
-        token = None
-        if config_entries.current_entry.get() is None:
-            token = config_entries.current_entry.set(entry)
-        try:
-            await async_unload_entry(hass, entry)
-            await async_setup_entry(hass, entry)
-        finally:
-            if token:
-                config_entries.current_entry.reset(token)
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: MeshtasticConfigEntry) -> bool:
